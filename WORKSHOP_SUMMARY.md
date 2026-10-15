@@ -1,8 +1,8 @@
-# Digital VLSI Project — Detailed Summary
+# Digital VLSI Workshop — Detailed Summary
 
-## 1. Project at a Glance
+## 1. Workshop at a Glance
 
-This project is a hands-on digital VLSI learning journal. It follows designs from
+This workshop is a hands-on digital VLSI learning journal. It follows designs from
 behavioral Verilog through functional verification, logic synthesis, standard-cell
 mapping, physical design, timing analysis, and the concepts required to complete an
 RTL-to-GDSII flow. The physical-design exercises use the open-source SKY130 PDK and
@@ -18,7 +18,7 @@ The repository combines:
   tree synthesis, routing theory, and timing verification.
 - Source and generated design artifacts, including Verilog netlists, LEF/DEF,
   Magic layout, SPICE, and timing/synthesis reports.
-- Theory diagrams embedded below from the project’s three `theory_images`
+- Theory diagrams embedded below from the workshop’s three `theory_images`
   directories.
 
 The primary workshop tree is [`RTLDesignWorkshop`](RTLDesignWorkshop/). A second
@@ -29,7 +29,7 @@ images and documentation.
 
 ## 2. Learning Objectives
 
-By working through the project, a learner can:
+By working through the workshop, a learner can:
 
 1. Describe combinational hardware in Verilog and validate its behavior with a
    self-checking or waveform-based testbench.
@@ -52,7 +52,7 @@ By working through the project, a learner can:
 
 ## 3. End-to-End Design Flow
 
-The project’s central flow is:
+The workshop’s central flow is:
 
 ```text
 RTL design
@@ -218,7 +218,7 @@ correct well/body connections matter to the extracted transistor model:
 ![Threshold voltage and body effect](RTLDesignWorkshop/Week3-Module3/Module3/theory_images/theory_threshold_voltage.png)
 
 The SPICE deck combines model declarations, circuit instances, sources, and
-simulation commands. The project corrects model naming, pulse-source reference,
+simulation commands. The workshop corrects model naming, pulse-source reference,
 and extraction scale issues before running ngspice:
 
 ![SPICE deck structure](RTLDesignWorkshop/Week3-Module3/Module3/theory_images/theory_spice_deck.png)
@@ -362,7 +362,7 @@ verification steps aim to produce:
 The module README currently describes this as theory prepared ahead of execution:
 the route, DRC, and post-route timing outputs have not yet been recorded. The
 diagrams above are part of that theory material, not evidence of a completed
-route/signoff run. The project also includes two Lee-algorithm diagrams in Module 4
+route/signoff run. The workshop also includes two Lee-algorithm diagrams in Module 4
 which provide additional maze-routing illustrations:
 
 ![Lee maze-routing algorithm example 1](RTLDesignWorkshop/Week-3-Module4/theory_images/theory_11_maze_routing_lee_algorithm_1.png)
@@ -371,7 +371,7 @@ which provide additional maze-routing illustrations:
 
 ## 7. Main Tools and File Formats
 
-| Tool / format | Role in the project |
+| Tool / format | Role in the workshop |
 |---|---|
 | Verilog | RTL and testbench descriptions |
 | Icarus Verilog (`iverilog`, `vvp`) | RTL and gate-level simulation |
