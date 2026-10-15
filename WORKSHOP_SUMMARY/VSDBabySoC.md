@@ -28,6 +28,11 @@ outputs are described in the source reports; this document summarizes their
 reported results. The synthesis and post-route results are not perfectly
 like-for-like because the analyzed netlists and clock/parasitic assumptions differ.
 
+The PDFs are report artifacts, not the design source itself. They do not include
+enough RTL, constraints, macro models, or build scripts to reproduce the whole
+SoC from this repository alone. Values below are attributed to the dated reports
+and should be read as snapshots from those runs.
+
 ## Design and STA concepts
 
 STA propagates arrival and required times through timing paths without needing
@@ -47,6 +52,33 @@ Positive slack meets that check; negative slack violates it. Setup is commonly
 worst in slow-cell, low-voltage conditions. Hold is commonly stressed by fast-cell,
 high-voltage conditions. A single typical-corner pass is not enough to establish
 timing across the supported operating range.
+
+### Interpreting PVT corner names
+
+A corner selects a characterized delay model for process variation, temperature,
+and supply voltage:
+
+- `ff` means fast-fast devices; shorter delays generally make this family
+  relevant to hold analysis.
+- `tt` means typical-typical devices, including the nominal
+  `tt_025C_1v80` point.
+- `ss` means slow-slow devices; longer delays generally make this family
+  important for setup analysis.
+- `n40C`, `025C`, and `100C` describe -40 °C, 25 °C, and 100 °C.
+- `1v28`, `1v80`, and similar suffixes encode the supply voltage.
+
+The synthesis-stage report observes temperature inversion at low voltage: its
+cold slow-corner result can be worse than its hot slow-corner result. Do not
+assume one temperature is always worst; use the supplied Liberty timing corners
+and the operating range required by the design.
+
+### WNS, TNS, and independent setup/hold checks
+
+WNS is the worst slack among the paths checked. TNS is the sum of negative slack
+over violating paths for that check. A very negative WNS with a very negative
+TNS can indicate a broad timing problem rather than one isolated path. Positive
+hold slack cannot cancel negative setup slack: setup and hold are independent
+requirements and each must pass at the appropriate corner.
 
 ![Setup timing with an ideal clock](../Week-3-Module4/theory_images/theory_02_setup_analysis_ideal_clock.png)
 
@@ -86,6 +118,12 @@ The most severe setup corner is `ss_n40C_1v28`: WNS is -76.8905 ns and TNS is
 than one isolated path. All corners meet hold, and setup is met in the fast and
 typical families.
 
+The best setup margin is +3.9382 ns at `ff_n40C_1v95`; the worst hold slack is
++0.1875 ns at that same corner. Setup violations range from -4.7641 ns at
+`ss_n40C_1v76` to -76.8905 ns at `ss_n40C_1v28`. That corner's TNS indicates
+many failing endpoints and substantial slow-corner timing risk at the 11 ns
+target, despite the passing hold checks in this synthesis-stage snapshot.
+
 ## Post-route STA: 10 October 2026
 
 The second report used OpenROAD v2.0-25794, the routed database `5_route.odb`,
@@ -122,6 +160,27 @@ At the nominal `tt_025c_1v80` corner, the report gives +6.1344 ns worst setup
 slack and +0.3245 ns worst hold slack. The example worst setup path ends at
 `CPU_Xreg_value_a4[9][18]`, in the register-file endpoint family.
 
+All six setup-failing routed corners are SS corners: `ss_100c_1v40` and
+`ss_n40c_1v28`, `1v35`, `1v40`, `1v44`, and `1v60`. The slow hot corner
+`ss_100c_1v60` passes at +1.2683 ns, while `ss_n40c_1v60` narrowly fails at
+-0.5273 ns. `ss_n40c_1v76` passes at +2.7816 ns. The minimum hold slack across
+the routed set is +0.1998 ns at `ff_n40c_1v95`; the checks pass, but the margin
+must still be judged against final constraints and sign-off methodology.
+
+### Critical path and clock assumptions
+
+At `tt_025c_1v80`, the post-route report identifies a worst setup path ending at
+`CPU_Xreg_value_a4[9][18]`, within the register-file endpoint family also seen
+in placement/CTS observations. The report gives propagated clock delay of about
+0.88 ns, close to an earlier CTS-stage value near 0.90 ns. Propagated-clock
+analysis includes inserted clock-tree delay at the sinks rather than assuming
+ideal, simultaneous clock arrival.
+
+These results remain conditional on the STA models. The report uses an 11 ns
+clock and standard-cell corners, while the AVSD PLL and DAC macro libraries were
+available at a single characterization condition and shared across corner runs.
+That limits conclusions about full-chip PVT sign-off.
+
 ## Physical-design results recorded by the post-route report
 
 The flow summary describes an OpenROAD-flow-scripts run for `sky130hd/vsdbabysoc`
@@ -145,6 +204,17 @@ stage data are not all from the same final run, as the report explicitly notes.
 The final route remained at 28 met1 shorts after the 64-iteration limit. The
 design is therefore not DRC-clean.
 
+The flow report also records 48,747 placed instances, about 19% utilization,
+1,144 clock sinks, 112 clock buffers, 237,296 µm total detailed-route wire
+length, and 50,061 vias. It reports zero antenna net/pin violations. Those
+results do not override the shorts: producing a routed database and reporting no
+antenna violations do not mean the layout passed DRC or connectivity sign-off.
+
+The report notes about 8% global-placement routing overflow and identifies
+congestion as a likely contributor to the remaining shorts. It does not prove
+the root cause of each violation. Inspect DRC markers before deciding whether to
+adjust pin access, blockages, routing constraints, or macro placement.
+
 ![Clock-tree buffering and RC model](../Week-3-Module4/theory_images/theory_03_cts_buffering_rc_model.png)
 
 ![Routing process overview](../Week3-Module5/theory_images/theory_05_tritonroute_flow.png)
@@ -164,6 +234,60 @@ changes from ideal to propagated, and the parasitics are estimated. Treat this a
 a comparison of the two recorded snapshots, not a controlled experiment isolating
 the effect of routing.
 
+The report's corner-by-corner comparison illustrates the trend:
+
+| Corner | Synthesis setup slack | Post-route setup slack |
+|---|---:|---:|
+| `ss_100c_1v40` | -13.4015 ns | -3.4532 ns |
+| `ss_100c_1v60` | -6.5384 ns | +1.2683 ns |
+| `ss_n40c_1v28` | -76.8905 ns | -28.2831 ns |
+| `ss_n40c_1v35` | -45.5748 ns | -16.0734 ns |
+| `ss_n40c_1v40` | -33.2707 ns | -10.7110 ns |
+| `ss_n40c_1v44` | -27.3124 ns | -7.6047 ns |
+| `ss_n40c_1v60` | -11.1771 ns | -0.5273 ns |
+| `ss_n40c_1v76` | -4.7641 ns | +2.7816 ns |
+| `tt_025c_1v80` | +0.9581 ns | +6.1344 ns |
+
+The synthesis report describes ideal-clock analysis; the later report includes
+the propagated CTS clock and a different flow netlist with buffering and
+fanout limiting. Later parasitics come from global-routing estimates rather
+than detailed-route SPEF extraction. The improvement is a comparison between
+snapshots, not an isolated measurement of routing benefit or sign-off on
+extracted parasitics.
+
+### How the corner reports were produced
+
+For the synthesis-stage analysis, the report describes running `report_checks`
+for min/max paths and collecting `report_worst_slack` and `report_tns` for each
+corner. It used the same synthesized netlist and 11 ns SDC while swapping the
+standard-cell Liberty corner. The PDF includes path-by-path detail.
+
+For the later report, the described OpenROAD run loaded the routed database,
+constraints, multiple standard-cell corner libraries, and the PLL/DAC macro
+libraries, then reported setup and hold paths per corner. It says the same
+routed database and parasitic estimate were used as the standard-cell corner
+changed. Parasitics were estimated with:
+
+```text
+estimate_parasitics -global_routing
+```
+
+and the platform RC file. The run did not use SPEF from detailed-route
+extraction. These values are useful implementation evidence, but are not
+extracted-parasitic final sign-off results. Reproduction also requires the exact
+netlists, SDC, macro timing models, Liberty files, scripts, and tool builds.
+
+### Frequency and minimum-period interpretation
+
+The post-route report calculates minimum period as `11 ns - worst setup slack`
+and estimates `Fmax` as `1000 / minimum_period` when period is in nanoseconds
+and frequency is in megahertz. At `ss_n40c_1v28`, the resulting 39.28 ns minimum
+period corresponds to about 25.46 MHz. This derived value assumes the timing
+model and constraints in the report; it is not a blanket chip-frequency
+specification. Product-level frequency claims require timing to pass across the
+specified PVT range with appropriate clock and IO constraints, macro models,
+extracted parasitics, and a DRC-clean implementation.
+
 The PVT trend is also important. Setup slack falls rapidly as voltage decreases
 in the SS family, particularly below about 1.6 V. At `ss_n40c_1v60`, slack is
 -0.5273 ns; at `ss_n40c_1v76`, it is +2.7816 ns. The low-voltage corner is a
@@ -182,6 +306,9 @@ reported value +0.1998 ns.
    global-routing estimate used in this report.
 5. Re-run the full multi-corner setup and hold checks on the final DRC-clean
    database and document tool versions, constraints, libraries, and outputs.
+6. Archive the exact RTL/netlist, SDC, macro models, Liberty files, OpenROAD
+   scripts, DRC output, and STA outputs used for the final run so the results
+   can be reproduced.
 
 ## Related documents and theory
 
@@ -190,3 +317,4 @@ reported value +0.1998 ns.
 - [Setup timing theory](../Week-3-Module4/theory_images/theory_02_setup_analysis_ideal_clock.png)
 - [Real-clock setup theory](../Week-3-Module4/theory_images/theory_08_setup_analysis_real_clock.png)
 - [Real-clock hold theory](../Week-3-Module4/theory_images/theory_09_hold_analysis_real_clock.png)
+- [Workshop video and access notes](./video/README.md)

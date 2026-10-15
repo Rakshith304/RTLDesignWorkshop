@@ -14,13 +14,13 @@ The goal of this journal is to record what I did, the commands I ran, and what I
 | 2 | Physical Design Online Course | [PD_Online_Course.md](./WORKSHOP_SUMMARY/PD_Online_Course.md) |
 | 3 | VSD BabySoC STA and Physical-Design Report | [VSDBabySoC.md](./WORKSHOP_SUMMARY/VSDBabySoC.md) |
 
-The course documents summarize the standalone RTL labs and OpenLane physical-design
-modules. The BabySoC document incorporates the supplied synthesis-stage and post-route
-STA reports and distinguishes measured results from outstanding sign-off issues.
+The [workshop summary index](./WORKSHOP_SUMMARY/README.md) links to the standalone RTL
+course, physical-design course, and BabySoC report. The documents explain their
+context and results; they also link to the detailed lab/module notes for reference.
 
 ## Workshop Video
 
-The shared workshop video is available in the [video folder](./video/README.md).
+The shared workshop video is available in the [summary video folder](./WORKSHOP_SUMMARY/video/README.md).
 
 ---
 
