@@ -169,6 +169,11 @@ and applies generated instances to structures such as a ripple-carry adder. It
 compares priority behavior in `if`/`else if` chains with selection in `case`
 statements, highlights incomplete branches (including unassigned individual
 outputs), and demonstrates checking the inferred hardware in Yosys.
+The walkthrough extends the concepts to an overlapping or badly written `case`,
+which is checked by comparing RTL simulation with GLS, and to a demultiplexer
+implemented with `case` or generated structure. A full-adder module is replicated
+with a `generate for` loop and chained carry signals to build a ripple-carry adder;
+changing the loop bound scales the width without manually repeating each instance.
 
 ## 6. OpenLane Physical-Design Modules
 
@@ -258,6 +263,10 @@ and 22.7 ps fall time. The approximately 1.76 ps fall-delay value is explicitly
 flagged in the source notes as potentially affected by startup ringing. A LEF
 provides physical geometry and pin information; synthesis also needs a Liberty
 timing model to use a custom cell for logic mapping.
+The source deck required three corrections: use model names that exist in the
+provided SPICE libraries, connect the input pulse source to ground, and set the
+device scale to match Magic's extraction grid. The final inverter layout is
+1.380 µm × 2.720 µm; the module reports its original layout as DRC-clean.
 
 ### Module 4 — custom-cell integration, timing, and CTS
 
@@ -289,7 +298,12 @@ does not guarantee the other passes:
 The recorded critical path contains a long serial OR-gate chain. Manual upsizing
 improves WNS from -22.77 ns to -12.626 ns, but does not fully close timing. The
 notes identify logic-depth restructuring as a more fundamental remedy than
-indefinite per-cell upsizing.
+indefinite per-cell upsizing. The investigated path starts at a flip-flop, passes
+through roughly 65 `or2_2`/`or3_2` gates, and ends at another flip-flop. Upsizing
+five cells first improves WNS to -16.182 ns; subsequent bulk rounds improve it to
+-15.818 ns and then -13.389 ns as another critical endpoint is exposed, before
+the final round reaches -12.626 ns. The exercise demonstrates that fixing one
+critical path can reveal another.
 
 Clock tree synthesis (CTS) distributes the clock to sequential cells. Buffering
 balances the load and wire RC delay across branches; power-aware delay tables help
@@ -316,11 +330,36 @@ clock can cause unintended state capture:
 
 ![Clock glitch problem](Week-3-Module4/theory_images/theory_05_clock_glitch_problem.png)
 
+In the recorded run, OpenLane's `run_cts` completed successfully after synthesis,
+floorplanning, and placement. The raw post-CTS report gives WNS = -16.55 ns and
+TNS = -388.99 ns; the clock report measured 3.39 ns skew between the shown clock
+pins. A subsequent `run_sta` evaluated timing with the CTS clock propagated and
+reported WNS = -13.64 ns and TNS = -269.12 ns.
+
+| Recorded stage | WNS | TNS | Notes |
+|---|---:|---:|---|
+| Post-synthesis baseline | -22.77 ns | -639.39 ns | Module 4 run |
+| After manual/bulk upsizing | -12.626 ns | Not reported | Three iterative rounds |
+| Reproduced placement run | -24.09 ns | -702.78 ns | Fresh run after accidental overwrite; not the same optimized run |
+| Post-CTS, raw ideal-relative | -16.55 ns | -388.99 ns | CTS succeeded |
+| Post-CTS, propagated-clock STA | -13.64 ns | -269.12 ns | `run_sta` |
+
+These numbers come from different runs and timing contexts; they should not be
+read as one strictly monotonic optimization sequence. Clock shielding is discussed
+as theory but was not separately implemented.
+
 Known caveats recorded by the module include a custom-cell DRC warning
 (`Transistor width < 0.42um`) and an unintended extra `sky130_inv.lef` included in
 the merge alongside the intended custom cell. They did not prevent the documented
 flow from proceeding, but should be reviewed before treating the cell integration
 as clean signoff.
+
+The module also reports that `sky130_vsdinv` appeared 1,554 times in the synthesis
+netlist. Its discussion of the custom cell's Liberty/timing characterization and
+how ABC selected those instances should be treated cautiously: the same module
+describes the cell as lacking a real timing model and being a black box in STA,
+so physical LEF presence alone should not be taken as proof of a characterized,
+timing-aware synthesis mapping.
 
 ### Module 5 — routing and post-route analysis
 
@@ -358,7 +397,9 @@ track-level wires and vias:
 Before detailed routing, guides are split, merged, or bridged so they form usable
 continuous routing regions. TritonRoute then routes within panels, handling
 same-layer work in parallel where possible and resolving dependencies between
-layers in sequence:
+layers in sequence. In the described panel ordering, one set of panels is routed
+on M2, then even-indexed M3 panels, then odd-indexed M3 panels using the even
+panels as context:
 
 ![Route-guide splitting, merging, and bridging](Week3-Module5/theory_images/theory_08_preprocessed_route_guides.png)
 
@@ -367,14 +408,22 @@ layers in sequence:
 For each net, the router identifies legal access points on pins and neighboring
 layers. It then builds a topology connecting those points; a minimum spanning tree
 is one way to minimize the total connection distance without leaving terminals
-disconnected:
+disconnected. The documented guide-connectivity rule accepts touching guides on
+the same layer or guides on neighboring layers with non-zero overlap. The example
+MST method builds pairwise distances between access points (O(n²) entries) and
+uses a spanning-tree algorithm to connect them while avoiding redundant loops:
 
 ![Routing access points for pins and adjacent layers](Week3-Module5/theory_images/theory_10_access_points.png)
 
 ![Minimum-spanning-tree routing topology](Week3-Module5/theory_images/theory_06_mst_topology.png)
 
-After routing, connectivity, design-rule violations, shorts, and timing must be
-checked. The full-layout illustration shows the physical result these routing and
+After routing, verify that every net is connected and routed, that there are no
+shorts or open nets, and that wire/via width and spacing rules pass. OpenSTA then
+checks timing over the implemented paths without requiring exhaustive functional
+simulation. Setup checks for late-arriving data before the capture edge; hold
+checks that data remains stable for the required interval after it. Positive slack
+meets the relevant timing requirement, while negative slack indicates a violation.
+The full-layout illustration shows the physical result these routing and
 verification steps aim to produce:
 
 ![Full routed layout](Week-3-Module4/theory_images/theory_13_route_full_layout.png)
