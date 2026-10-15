@@ -18,6 +18,10 @@ The course documents summarize the standalone RTL labs and OpenLane physical-des
 modules. The BabySoC document incorporates the supplied synthesis-stage and post-route
 STA reports and distinguishes measured results from outstanding sign-off issues.
 
+## Workshop Video
+
+The shared workshop video is available in the [video folder](./video/README.md).
+
 ---
 
 ## 🧰 Tools Used
