@@ -10,9 +10,13 @@ The goal of this journal is to record what I did, the commands I ran, and what I
 
 | # | Topic | Link |
 |---|-------|------|
-| 1 | Simulating a 2:1 Mux with Icarus Verilog & GTKWave | [lab1_mux_simulation.md](./lab1_mux_simulation.md) |
-| 2 | Logic Synthesis with Yosys + SKY130 | [lab2_yosys_synthesis.md](./lab2_yosys_synthesis.md) |
-| 3 | Timing Libraries, Hierarchy, and Flip-Flop Coding | [lab3_libraries_and_flops.md](./lab3_libraries_and_flops.md) |
+| 1 | RTL Online Course | [RTL_Online_Course.md](./WORKSHOP_SUMMARY/RTL_Online_Course.md) |
+| 2 | Physical Design Online Course | [PD_Online_Course.md](./WORKSHOP_SUMMARY/PD_Online_Course.md) |
+| 3 | VSD BabySoC STA and Physical-Design Report | [VSDBabySoC.md](./WORKSHOP_SUMMARY/VSDBabySoC.md) |
+
+The course documents summarize the standalone RTL labs and OpenLane physical-design
+modules. The BabySoC document incorporates the supplied synthesis-stage and post-route
+STA reports and distinguishes measured results from outstanding sign-off issues.
 
 ---
 
